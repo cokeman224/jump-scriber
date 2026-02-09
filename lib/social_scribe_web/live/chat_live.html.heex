@@ -1,0 +1,170 @@
+<div class="max-w-3xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Ask Anything</h1>
+    <div class="flex items-center gap-1">
+      <.link navigate={~p"/dashboard"} class="p-2 rounded-lg hover:bg-slate-100 text-slate-600" aria-label="Back">
+        <.icon name="hero-arrow-left" class="w-5 h-5" />
+      </.link>
+    </div>
+  </div>
+
+  <div class="flex gap-4 border-b border-slate-200 mb-6">
+    <button
+      phx-click="set_tab"
+      phx-value-tab="chat"
+      class={["pb-3 px-1 text-sm font-medium border-b-2 transition-colors", @active_tab == :chat && "border-indigo-600 text-indigo-600" || "border-transparent text-slate-500 hover:text-slate-700"]}
+    >
+      Chat
+    </button>
+    <button
+      phx-click="set_tab"
+      phx-value-tab="history"
+      class={["pb-3 px-1 text-sm font-medium border-b-2 transition-colors", @active_tab == :history && "border-indigo-600 text-indigo-600" || "border-transparent text-slate-500 hover:text-slate-700"]}
+    >
+      History
+    </button>
+  </div>
+
+  <div class="flex items-center gap-4 mb-6">
+    <div class="flex-1 border-t border-slate-200"></div>
+    <span class="text-sm text-slate-400 shrink-0">{@timestamp}</span>
+    <div class="flex-1 border-t border-slate-200"></div>
+  </div>
+
+  <%= if @active_tab == :chat do %>
+    <div class="space-y-6">
+      <%= if Enum.empty?(@messages) do %>
+        <p class="text-slate-600 py-4">
+          I can answer questions about Jump meetings and data – just ask!
+        </p>
+      <% end %>
+
+      <div class="space-y-4">
+        <div :for={msg <- @messages} class="flex flex-col gap-1">
+          <%= if msg.role == :user do %>
+            <div class="flex justify-end">
+              <div class="max-w-[85%] rounded-lg rounded-br-md px-4 py-2.5 bg-slate-200 text-slate-800 text-sm">
+                <%= if msg.tagged_contact do %>
+                  <span class="text-slate-500 text-xs">🤵 <%= msg.tagged_contact.name %></span>
+                  <span class="block mt-1"><%= msg.content %></span>
+                <% else %>
+                  <%= msg.content %>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <div class="flex justify-start">
+              <div class="max-w-[85%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-white border border-slate-200 text-slate-800 text-sm shadow-sm">
+                <div><%= msg.content %></div>
+                <%= if is_list(msg.sources) && Enum.any?(msg.sources) do %>
+                  <div class="mt-3 pt-2 border-t border-slate-100">
+                    <p class="text-xs font-medium text-slate-500 flex items-center gap-1">
+                      <.icon name="hero-document-text" class="w-4 h-4" />
+                      Sources
+                    </p>
+                    <ul class="text-xs text-slate-600 mt-1 space-y-0.5">
+                      <li :for={src <- msg.sources}><%= src %></li>
+                    </ul>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <%= if @sending do %>
+          <div class="flex justify-start">
+            <div class="rounded-2xl rounded-bl-md px-4 py-2.5 bg-white border border-slate-200 text-slate-500 text-sm">
+              <.icon name="hero-arrow-path" class="w-4 h-4 animate-spin inline-block mr-2" />
+              Thinking...
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="mt-8">
+        <form phx-submit="send_message" phx-change="update_input" class="relative">
+          <div class="rounded-xl border-2 border-ask-input bg-white p-2 flex flex-col gap-2 shadow-sm">
+            <button
+              type="button"
+              phx-click="add_context_click"
+              class="self-start px-3 py-1.5 text-sm text-slate-700 bg-white border border-slate-300 rounded-2xl hover:bg-slate-50 transition-colors"
+            >
+              @ Add context
+            </button>
+            <input
+              type="text"
+              name="message"
+              value={@input_message}
+              placeholder="Ask anything about your meetings"
+              phx-debounce="150"
+              class="w-full px-3 py-2 border-0 focus:ring-0 focus:outline-none text-slate-800 placeholder-slate-400"
+            />
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs text-slate-700">
+                <span>Sources</span>
+                <.source_icons />
+                <%= if @tagged_contact do %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    🤵 <%= @tagged_contact.name %> (<%= @tagged_contact.provider %>)
+                  </span>
+                <% end %>
+              </div>
+              <button
+                type="submit"
+                class="flex-shrink-0 w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+                aria-label="Send"
+              >
+                <.icon name="hero-arrow-up" class="size-5" />
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <%= if @contact_picker_open do %>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30" phx-click="close_contact_picker">
+          <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[70vh] flex flex-col p-4" phx-click-away="close_contact_picker">
+            <h3 class="font-semibold text-slate-800 mb-2">Add contact context</h3>
+            <input
+              type="text"
+              name="contact_query"
+              value={@contact_search_query}
+              placeholder="Search contacts..."
+              phx-keyup="contact_search"
+              phx-debounce="200"
+              class="w-full px-3 py-2 border border-slate-200 rounded-lg mb-3"
+            />
+            <%= if @contact_search_loading do %>
+              <p class="text-sm text-slate-500 py-4">Searching...</p>
+            <% else %>
+              <div class="overflow-y-auto flex-1 space-y-1">
+                <button
+                  :for={c <- @contact_search_results}
+                  type="button"
+                  phx-click="select_chat_contact"
+                  phx-value-id={c.id}
+                  phx-value-provider={c.provider}
+                  class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-3"
+                >
+                  <span class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                    <%= String.at(c.display_name || "?", 0) %>
+                  </span>
+                  <div>
+                    <p class="font-medium text-slate-800"><%= c.display_name %></p>
+                    <p class="text-xs text-slate-500"><%= c.email %> · <%= c.provider %></p>
+                  </div>
+                </button>
+                <%= if @contact_search_query != "" && !@contact_search_loading && Enum.empty?(@contact_search_results) do %>
+                  <p class="text-sm text-slate-500 py-4">No contacts found.</p>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="text-slate-500 py-4">Chat history (session only). Connect a CRM and use Chat to ask questions.</p>
+  <% end %>
+</div>

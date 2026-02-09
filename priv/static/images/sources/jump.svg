@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- Jump AI logo: eye motif - black circle with inner circles -->
+  <circle cx="12" cy="12" r="11" fill="#000"/>
+  <circle cx="11" cy="11" r="4" fill="#fff"/>
+  <circle cx="13" cy="9.5" r="2" fill="#fff"/>
+</svg>
